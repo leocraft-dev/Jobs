@@ -2,7 +2,7 @@
 # JobS2 Docker 镜像构建与推送
 # 触发条件:
 #   - push 到 main 分支 → 构建并推送至 Docker Hub (latest)
-#   - 打 tag v* → 额外推送至 Docker Hub (版本号)
+#   - 打 tag v* 或发布 Release → 额外推送至 Docker Hub (版本号 + latest)
 #   - PR → 仅构建验证，不推送
 # ====================================================================
 
@@ -60,8 +60,8 @@ jobs:
           tags: |
             # 版本 tag（如 v0.0.1 → 0.0.1）
             type=semver,pattern={{version}}
-            # main 分支 → latest
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            # main 分支或发布 Release 时 → 自动打上 latest 标签
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.event_name == 'release' }}
             # 每次构建的短 SHA
             type=sha,format=short
 
@@ -80,6 +80,7 @@ jobs:
       - name: 📝 Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.IMAGE_NAME }}
+          # 关键修改：添加 index.docker.io/ 前缀以正确匹配 Docker Hub 凭证
+          subject-name: index.docker.io/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: ${{ github.event_name != 'pull_request' }}
