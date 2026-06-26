@@ -1,0 +1,30 @@
+# Environment variables (contains secrets like webhook URLs)
+.env
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment & IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Log files
+logs/
+
+# Browser profile (Chromium user data - auto-generated)
+browser_profile/
+
+# Fingerprint data (auto-generated, deployment-specific)
+data/
+
+# Debug / traffic logs
+zhipin_traffic.jsonl
