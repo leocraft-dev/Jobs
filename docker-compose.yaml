@@ -1,0 +1,91 @@
+# ====================================================================
+# JobS2 — 智能招聘 BOT Docker Compose 部署配置
+# ====================================================================
+#
+# 使用方式:
+#   1. 复制 .env.example 为 .env 并填写配置
+#   2. docker compose up -d
+#   3. docker compose logs -f
+#
+# 持久化目录（挂载卷）:
+#   - ./data/fingerprints/  → 职位指纹库（增量去重持久化）
+#   - ./data/browser/       → Chromium 浏览器配置（Cookie 持久化）
+#   - ./data/screenshots/   → 扫码二维码截图
+#   - ./logs/               → 运行日志
+#
+# ====================================================================
+
+version: "3.9"
+
+services:
+  jobs2-bot:
+    image: ${DOCKERHUB_USERNAME}/jobs:latest
+    container_name: jobs2-bot
+    restart: unless-stopped
+
+    # ── 环境变量配置 ──
+    # 所有 BOT_* 变量对应 src/config.py 中的 BotConfig 字段
+    environment:
+      # === 搜索配置 ===
+      - BOT_SEARCH_URL=${BOT_SEARCH_URL:-https://www.zhipin.com/web/geek/job?query=Python&city=101020100}
+      - BOT_PAGES_TO_SCAN=${BOT_PAGES_TO_SCAN:-3}
+
+      # === 轮询间隔（秒） ===
+      - BOT_CHECK_INTERVAL=${BOT_CHECK_INTERVAL:-300}
+
+      # === 人性化延迟（秒） ===
+      - BOT_MIN_DELAY=${BOT_MIN_DELAY:-3.0}
+      - BOT_MAX_DELAY=${BOT_MAX_DELAY:-7.0}
+
+      # === 每日限制 ===
+      - BOT_DAILY_CHAT_LIMIT=${BOT_DAILY_CHAT_LIMIT:-150}
+      - BOT_MAX_CONSECUTIVE_EMPTY=${BOT_MAX_CONSECUTIVE_EMPTY:-3}
+
+      # === 飞书通知（必填） ===
+      - BOT_LARK_WEBHOOK_URL=${BOT_LARK_WEBHOOK_URL:?error}
+
+      # === Chromium 配置 ===
+      - BOT_HEADLESS=${BOT_HEADLESS:-false}
+      # 覆盖默认临时路径 → 挂载卷目录（持久化 Cookie）
+      - BOT_USER_DATA_PATH=/data/browser
+      - BOT_SCREENSHOT_DIR=/data/screenshots
+      - BOT_FINGERPRINT_PATH=/data/fingerprints/known_fingerprints.json
+
+      # === 时区 ===
+      - TZ=Asia/Shanghai
+
+    # ── 持久化存储 ──
+    volumes:
+      # 指纹库（增量去重，重启后不丢失）
+      - ./data/fingerprints:/data/fingerprints
+      # 浏览器配置（含 Cookie，避免每次扫码）
+      - ./data/browser:/data/browser
+      # 截图存储（扫码二维码）
+      - ./data/screenshots:/data/screenshots
+      # 运行日志
+      - ./logs:/app/logs
+
+    # ── 资源限制（防内存泄漏导致系统崩溃） ──
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+    # ── 健康检查（每 30 秒检测 BOT 是否存活） ──
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python.*src.main"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # ── 日志配置（自动轮转，防止磁盘占满） ──
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
