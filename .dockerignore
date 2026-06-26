@@ -1,0 +1,48 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!env.docker
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs — 容器内日志应挂载卷
+logs/
+
+# Browser profile — 运行时生成，不镜像
+browser_profile/
+
+# Fingerprint data — 运行时生成，不镜像
+data/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Debug / traffic — 运行时生成
+zhipin_traffic.jsonl
+
+# Documentation
+.clinerules/
