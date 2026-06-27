@@ -154,14 +154,14 @@ class JobS2Bot:
             co.set_browser_path('/usr/bin/google-chrome')
 
         # 容器运行必需 Chromium 启动参数
-        co.add_argument('--no-sandbox')                 # 禁用沙盒（容器内必需）
-        co.add_argument('--disable-setuid-sandbox')     # 禁用 setuid 沙盒
-        co.add_argument('--disable-dev-shm-usage')      # 减少 /dev/shm 内存占用
-        co.add_argument('--disable-gpu')                # 禁用 GPU 加速
+        co.set_argument('--no-sandbox')                 # 禁用沙盒（容器内必需）
+        co.set_argument('--disable-setuid-sandbox')     # 禁用 setuid 沙盒
+        co.set_argument('--disable-dev-shm-usage')      # 防止内存不足崩溃
+        co.set_argument('--disable-gpu')                # 禁用 GPU 加速
 
         # 无头模式（Docker 无界面环境）
         if config.headless:
-            co.add_argument('--headless=new')
+            co.set_argument('--headless=new')
 
         # 持久化浏览器数据目录（含 Cookie，挂载到宿主机卷）
         co.set_user_data_path(config.user_data_path)
