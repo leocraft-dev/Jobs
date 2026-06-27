@@ -147,22 +147,18 @@ class JobS2Bot:
         # 2. 初始化 DrissionPage
         co = ChromiumOptions()
 
-        # 锁死浏览器路径（Docker 镜像中 Google Chrome 官方路径）
         co.set_browser_path('/usr/bin/google-chrome')
-
-        # 核心：开启官方新版无头模式
         co.headless(True)
 
-        # Docker 容器运行必需参数
+        # ── 终极解法：直接用 DrissionPage 的原生全局参数覆盖 ──
+        co.set_argument('--remote-debugging-address', '0.0.0.0')
+        # 加上这个防止部分 Chrome 版本依旧拦截
+        co.set_argument('--remote-allow-origins', '*')
+
         co.set_argument('--no-sandbox')
         co.set_argument('--disable-setuid-sandbox')
         co.set_argument('--disable-dev-shm-usage')
-        co.set_argument('--disable-gpu')
-
-        # 指定端口和纯净的临时目录，规避挂载目录的所有可能冲突
         co.set_local_port(9222)
-        co.set_argument('--remote-debugging-address', '0.0.0.0')
-        co.set_user_data_path('/tmp/chrome_safe_data')
 
         self.page = ChromiumPage(co)
         logger.info(f"Chromium 浏览器已启动 (headless={config.headless})")
