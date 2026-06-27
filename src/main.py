@@ -146,17 +146,28 @@ class JobS2Bot:
 
         # 2. 初始化 DrissionPage
         co = ChromiumOptions()
-        # 如果设置了 CHROME_BIN 环境变量（Docker 环境），指定 Chromium 二进制路径
-        chrome_bin = os.environ.get("CHROME_BIN")
-        if chrome_bin:
-            co.set_paths(browser_path=chrome_bin)
-        co.set_argument("--no-sandbox")
-        co.set_argument("--disable-gpu")
-        co.set_argument("--disable-dev-shm-usage")
-        co.set_argument("--disable-blink-features=AutomationControlled")
+
+        # 自动检测并设置 Chromium 可执行文件路径（Docker 镜像通用路径）
+        if os.path.exists('/usr/bin/chromium'):
+            co.set_browser_path('/usr/bin/chromium')
+        elif os.path.exists('/usr/bin/google-chrome'):
+            co.set_browser_path('/usr/bin/google-chrome')
+
+        # 容器运行必需 Chromium 启动参数
+        co.add_argument('--no-sandbox')                 # 禁用沙盒（容器内必需）
+        co.add_argument('--disable-setuid-sandbox')     # 禁用 setuid 沙盒
+        co.add_argument('--disable-dev-shm-usage')      # 减少 /dev/shm 内存占用
+        co.add_argument('--disable-gpu')                # 禁用 GPU 加速
+
+        # 无头模式（Docker 无界面环境）
         if config.headless:
-            co.headless()
-        co.set_user_data_path(path=config.user_data_path)
+            co.add_argument('--headless=new')
+
+        # 持久化浏览器数据目录（含 Cookie，挂载到宿主机卷）
+        co.set_user_data_path(config.user_data_path)
+
+        # 固定调试端口，防止残留进程冲突
+        co.set_local_port(9222)
 
         self.page = ChromiumPage(co)
         logger.info(f"Chromium 浏览器已启动 (headless={config.headless})")
