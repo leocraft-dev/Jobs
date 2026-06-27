@@ -19,6 +19,8 @@ import os
 import sys
 import time
 import random
+import socket
+import threading
 from datetime import datetime, timezone
 
 from DrissionPage import ChromiumPage, ChromiumOptions
@@ -144,25 +146,51 @@ class JobS2Bot:
         # 1. 创建 notifier（不依赖 browser）
         self.notifier = LarkNotifier()
 
+        # ── 💡 纯 Python 实现的 9223 -> 127.0.0.1:9222 流量转发器 ──
+        def pure_python_forward():
+            def tunnel(src, dst):
+                try:
+                    while True:
+                        data = src.recv(4096)
+                        if not data: break
+                        dst.sendall(data)
+                except Exception: pass
+                finally:
+                    src.close(); dst.close()
+
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.bind(('0.0.0.0', 9223)) # 监听容器公网的所有连接
+            server.listen(5)
+
+            while True:
+                try:
+                    client_sock, _ = server.accept()
+                    # 收到宿主机连接后，作为客户端连入本机的 Chrome
+                    chrome_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    chrome_sock.connect(('127.0.0.1', 9222))
+
+                    # 开启双向线程管道转发流量
+                    threading.Thread(target=tunnel, args=(client_sock, chrome_sock), daemon=True).start()
+                    threading.Thread(target=tunnel, args=(chrome_sock, client_sock), daemon=True).start()
+                except Exception:
+                    break
+
+        # 在守护线程里永久运行这个转发器
+        threading.Thread(target=pure_python_forward, daemon=True).start()
+        logger.info("✅ 纯 Python 流量中转隧道已建立 (监听容器内 0.0.0.0:9223)")
+
         # 2. 初始化 DrissionPage
         co = ChromiumOptions()
-
         co.set_browser_path('/usr/bin/google-chrome')
         co.headless(True)
-
-        # ── 💡 关键修改：用原生参数锁死端口和放行，不要用 set_local_port ──
-        co.set_argument('--remote-debugging-port', '9222')       # 强制指定端口
-        co.set_argument('--remote-debugging-address', '0.0.0.0') # 强制监听所有网卡
-        co.set_argument('--remote-allow-origins', '*')            # 强行解除跨域限制
-
         co.set_argument('--no-sandbox')
         co.set_argument('--disable-setuid-sandbox')
         co.set_argument('--disable-dev-shm-usage')
-
-        # ── ⚠️ 核心：千万不要写 co.set_local_port(9222)，否则前功尽弃 ──
+        co.set_local_port(9222)
 
         self.page = ChromiumPage(co)
-        logger.info(f"Chromium 浏览器已启动 (headless={config.headless})")
+        logger.info("Chromium 浏览器已启动 (headless=True)")
 
         # 3. 初始化业务模块
         self.store = FingerprintStore()
