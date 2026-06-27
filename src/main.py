@@ -147,11 +147,13 @@ class JobS2Bot:
         # 2. 初始化 DrissionPage
         co = ChromiumOptions()
 
-        # 自动检测并设置 Chromium 可执行文件路径（Docker 镜像通用路径）
-        if os.path.exists('/usr/bin/chromium'):
-            co.set_browser_path('/usr/bin/chromium')
+        # 自动检测并设置浏览器可执行文件路径（Docker 镜像通用路径）
+        if os.path.exists('/usr/bin/google-chrome-stable'):
+            co.set_browser_path('/usr/bin/google-chrome-stable')
         elif os.path.exists('/usr/bin/google-chrome'):
             co.set_browser_path('/usr/bin/google-chrome')
+        elif os.path.exists('/usr/bin/chromium'):
+            co.set_browser_path('/usr/bin/chromium')
 
         # 容器运行必需 Chromium 启动参数
         co.set_argument('--no-sandbox')                 # 禁用沙盒（容器内必需）

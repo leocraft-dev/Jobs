@@ -14,17 +14,27 @@ LABEL org.opencontainers.image.licenses="MIT"
 # 环境变量：禁止 Python 字节码缓存、开启实时日志输出
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    TZ=Asia/Shanghai \
-    # 告知 DrissionPage Chromium 二进制文件路径
-    CHROME_BIN=/usr/bin/chromium
+    TZ=Asia/Shanghai
 
 # ── Stage 2: 安装系统依赖 ──
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
-        # Chromium 浏览器（无需单独装 chromium-driver，DrissionPage 直接控制）
-        chromium \
-        chromium-common \
-        # 虚拟显示（仅 headless=false 调试时需要，默认不强制安装以减小镜像）
+RUN set -eux; \
+    # 安装依赖工具
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+        procps; \
+    \
+    # 添加 Google Chrome 官方仓库（最稳定的 Chromium 来源）
+    curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg; \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+        > /etc/apt/sources.list.d/google-chrome.list; \
+    \
+    # 安装 Google Chrome
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        google-chrome-stable \
         # 中文字体支持（Boss 直聘页面中文渲染）
         fonts-noto-cjk \
         fonts-noto-color-emoji \
@@ -40,12 +50,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libgbm1 \
         libpango-1.0-0 \
         libcairo2 \
-        libasound2 \
-        # 工具
-        ca-certificates \
-        curl \
-        procps \
-    && rm -rf /var/lib/apt/lists/*
+        libasound2; \
+    \
+    # 清理
+    rm -rf /var/lib/apt/lists/*; \
+    \
+    # 验证 Chrome 安装
+    echo "=== 验证 Chrome 二进制 ==="; \
+    which google-chrome-stable; \
+    google-chrome-stable --version; \
+    echo "=== Chrome 安装验证通过 ==="
+
 # ── Stage 3: 安装 Python 依赖 ──
 WORKDIR /app
 
@@ -61,9 +76,4 @@ COPY . .
 RUN mkdir -p /app/logs
 
 # ── Stage 5: 入口 ──
-
-# headless=true（默认）: DrissionPage 使用 Chromium 内建无头模式，不依赖显示设备
-# headless=false（调试）: 需安装 xvfb: apt-get install -y xvfb xauth
-#                        然后改为 ENTRYPOINT ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1920x1080x24"]
-# BOT 默认使用临时目录存储浏览器配置和指纹数据（可通过环境变量覆盖）
 ENTRYPOINT ["python", "-m", "src.main"]
