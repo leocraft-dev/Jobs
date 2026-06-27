@@ -161,6 +161,7 @@ class JobS2Bot:
 
         # 指定端口和纯净的临时目录，规避挂载目录的所有可能冲突
         co.set_local_port(9222)
+        co.set_argument('--remote-debugging-address', '0.0.0.0')
         co.set_user_data_path('/tmp/chrome_safe_data')
 
         self.page = ChromiumPage(co)
