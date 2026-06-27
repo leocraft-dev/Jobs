@@ -150,15 +150,16 @@ class JobS2Bot:
         co.set_browser_path('/usr/bin/google-chrome')
         co.headless(True)
 
-        # ── 终极解法：直接用 DrissionPage 的原生全局参数覆盖 ──
-        co.set_argument('--remote-debugging-address', '0.0.0.0')
-        # 加上这个防止部分 Chrome 版本依旧拦截
-        co.set_argument('--remote-allow-origins', '*')
+        # ── 💡 关键修改：用原生参数锁死端口和放行，不要用 set_local_port ──
+        co.set_argument('--remote-debugging-port', '9222')       # 强制指定端口
+        co.set_argument('--remote-debugging-address', '0.0.0.0') # 强制监听所有网卡
+        co.set_argument('--remote-allow-origins', '*')            # 强行解除跨域限制
 
         co.set_argument('--no-sandbox')
         co.set_argument('--disable-setuid-sandbox')
         co.set_argument('--disable-dev-shm-usage')
-        co.set_local_port(9222)
+
+        # ── ⚠️ 核心：千万不要写 co.set_local_port(9222)，否则前功尽弃 ──
 
         self.page = ChromiumPage(co)
         logger.info(f"Chromium 浏览器已启动 (headless={config.headless})")
