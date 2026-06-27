@@ -15,6 +15,7 @@ BOT 主入口 — 状态机驱动的运行主循环
     python -m src.main
 """
 
+import os
 import sys
 import time
 import random
@@ -145,12 +146,18 @@ class JobS2Bot:
 
         # 2. 初始化 DrissionPage
         co = ChromiumOptions()
-        if not config.headless:
-            pass  # 默认有头模式
-        else:
-            co.headless()
+        # 自动分配端口，启动新浏览器实例（而非尝试连接已有实例）
+        co.auto_port()
+        # 如果设置了 CHROME_BIN 环境变量（Docker 环境），指定 Chromium 路径
+        chrome_bin = os.environ.get("CHROME_BIN")
+        if chrome_bin:
+            co.set_browser_path(chrome_bin)
         co.set_argument("--no-sandbox")
         co.set_argument("--disable-gpu")
+        co.set_argument("--disable-dev-shm-usage")
+        co.set_argument("--disable-blink-features=AutomationControlled")
+        if config.headless:
+            co.headless()
         co.set_user_data_path(path=config.user_data_path)
 
         self.page = ChromiumPage(co)
